@@ -105,8 +105,19 @@ small { font-size: 0.8em; }
 }
 .results { display: grid; gap: 16px; align-content: start; min-width: 0; }
 
+/* PC：プラン例とグラフは横いっぱい、その下に「細かく設定」と結果を横並び */
 @media (min-width: 900px) {
-  .layout { grid-template-columns: minmax(340px, 420px) 1fr; align-items: start; }
+  .layout {
+    grid-template-columns: minmax(340px, 420px) 1fr;
+    grid-template-areas: "presets presets" "chart chart" "inputs results";
+    align-items: start;
+  }
+  .presets-panel { grid-area: presets; }
+  .chart-panel { grid-area: chart; }
+  .inputs { grid-area: inputs; }
+  .results { grid-area: results; }
+  .preset-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  .preset-group .preset-label { margin-top: 0; }
 }
 
 .panel {
@@ -128,12 +139,17 @@ small { font-size: 0.8em; }
   color: var(--primary);
   border-radius: 12px;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: clamp(0.8rem, 4vw, 0.95rem);
   line-height: 1.3;
+  padding: 4px 2px;
+  white-space: nowrap;
   cursor: pointer;
 }
 .preset[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
 
+.preset-label { margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--muted); }
+.preset-group + .preset-group { margin-top: 10px; }
+@media (min-width: 900px) { .preset-group + .preset-group { margin-top: 0; } }
 .howto { margin: 4px 0 0; font-size: 0.9rem; color: var(--muted); }
 
 /* ---------- くわしい設定（折りたたみ） ---------- */
@@ -329,16 +345,44 @@ input[type="range"]::-moz-range-thumb {
 </header>
 
 <main class="layout">
-  <!-- ===== 入力 ===== -->
-  <section class="panel inputs" aria-labelledby="inputsTitle">
-    <h2 id="inputsTitle" class="visually-hidden">条件の入力</h2>
-
-    <div class="presets" role="group" aria-label="プリセット">
+  <!-- ===== プラン例（プリセット） ===== -->
+  <section class="panel presets-panel" aria-labelledby="presetsTitle">
+    <h2 id="presetsTitle" class="panel-title">プラン例を選ぶ</h2>
+    <div class="preset-groups">
+    <div class="preset-group">
+    <p class="preset-label" id="presetSmall">少額から（4年＝大学の在学期間の目安）</p>
+    <div class="presets" role="group" aria-labelledby="presetSmall">
+      <button type="button" class="preset" data-monthly="1000" data-years="4">月1,000円<br>×4年</button>
+      <button type="button" class="preset" data-monthly="2000" data-years="4">月2,000円<br>×4年</button>
+      <button type="button" class="preset" data-monthly="3000" data-years="4">月3,000円<br>×4年</button>
+    </div>
+    </div>
+    <div class="preset-group">
+    <p class="preset-label" id="presetLong">長期でコツコツ</p>
+    <div class="presets" role="group" aria-labelledby="presetLong">
       <button type="button" class="preset" data-monthly="10000" data-years="20">月1万円<br>×20年</button>
       <button type="button" class="preset" data-monthly="30000" data-years="20">月3万円<br>×20年</button>
       <button type="button" class="preset" data-monthly="50000" data-years="30">月5万円<br>×30年</button>
     </div>
-    <p class="howto">ボタンを押すか、<b>●を指で左右に動かす</b>と、上の金額がすぐに変わります。</p>
+    </div>
+    </div>
+    <p class="howto">押すと金額とグラフがすぐ変わります。自由に変えたいときは、グラフの下の「細かく設定する」へ。</p>
+  </section>
+
+  <!-- ===== グラフ ===== -->
+  <section class="panel chart-panel" aria-labelledby="chartTitle">
+    <h2 id="chartTitle" class="panel-title">年ごとの推移</h2>
+    <p class="hint">棒グラフをタップすると、その年の金額が表示されます。</p>
+    <div class="chart-wrap">
+      <canvas id="chart" role="img" aria-label="元本と運用益の積み上げ棒グラフ、預金の推移の折れ線"></canvas>
+      <p id="chartError" class="chart-error" hidden>グラフを読み込めませんでした（インターネット接続をご確認ください）。数値の計算は通常どおり行えます。</p>
+    </div>
+  </section>
+
+  <!-- ===== 細かい設定 ===== -->
+  <section class="panel inputs" aria-labelledby="inputsTitle">
+    <h2 id="inputsTitle" class="panel-title">細かく設定する</h2>
+    <p class="hint">●を指で左右に動かすか、数字を入力してください。</p>
 
     <div class="field">
       <div class="field-head">
@@ -412,15 +456,6 @@ input[type="range"]::-moz-range-thumb {
   <!-- ===== 結果 ===== -->
   <section class="results" aria-labelledby="resultsTitle">
     <h2 id="resultsTitle" class="visually-hidden">シミュレーション結果</h2>
-
-    <div class="panel">
-      <h3 class="panel-title">年ごとの推移</h3>
-      <p class="hint">棒グラフをタップすると、その年の金額が表示されます。</p>
-      <div class="chart-wrap">
-        <canvas id="chart" role="img" aria-label="元本と運用益の積み上げ棒グラフ、預金の推移の折れ線"></canvas>
-        <p id="chartError" class="chart-error" hidden>グラフを読み込めませんでした（インターネット接続をご確認ください）。数値の計算は通常どおり行えます。</p>
-      </div>
-    </div>
 
     <div class="panel">
       <h3 class="panel-title">課税口座・預金との比較</h3>
