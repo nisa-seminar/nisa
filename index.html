@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NISA積立シミュレーター</title>
+<meta name="description" content="月々の積立額・利回り・期間から将来の資産額を試算するNISA積立シミュレーター">
+<!-- 説明会限りの利用のため、検索エンジンには載せない -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="theme-color" content="#0a3d91">
+<meta name="format-detection" content="telephone=no">
+<style>
+/* NISA積立シミュレーター — 大きな文字・高コントラスト（プロジェクター投影対応） */
+:root {
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --text: #0d1117;
+  --muted: #3d4651;
+  --border: #b8c0cc;
+  --primary: #0a3d91;       /* 濃い青：操作系 */
+  --primary-ink: #ffffff;
+  --principal: #1f5fbf;     /* 元本 */
+  --gain: #e07000;          /* 運用益 */
+  --deposit: #4a4a4a;       /* 預金 */
+  --good: #0a6b2c;
+  --warn-bg: #fff1d6;
+  --warn-border: #c26a00;
+  --danger-bg: #ffe3e3;
+  --danger-border: #b00020;
+  --ok-bg: #e3f5e8;
+  --radius: 14px;
+  --thumb: 36px;
+  font-size: 18px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", Meiryo, system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom)); /* 注意書きの分 */
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+button, input { font: inherit; color: inherit; }
+b { font-weight: 800; }
+small { font-size: 0.8em; }
+
+/* ---------- 最終資産額（上部固定） ---------- */
+.hero {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--primary);
+  color: var(--primary-ink);
+  padding: 10px 16px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.hero-inner { max-width: 1200px; margin: 0 auto; text-align: center; }
+.hero-label { font-size: 0.95rem; font-weight: 700; opacity: 0.95; }
+.hero-amount {
+  font-size: clamp(2.2rem, 11vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-cond { font-size: 0.85rem; font-weight: 700; opacity: 0.9; margin-top: 2px; }
+
+/* スクロール時は小さく（入力欄やグラフを広く見せる） */
+.hero-label, .hero-amount { transition: font-size 0.15s; }
+.hero.is-compact { padding: 6px 16px 8px; }
+.hero.is-compact .hero-label { font-size: 0.8rem; }
+.hero.is-compact .hero-amount { font-size: 2rem; }
+.hero.is-compact .hero-cond { display: none; }
+.hero.is-compact .hero-breakdown { margin-top: 4px; }
+.hero.is-compact .chip { font-size: 0.8rem; }
+
+.hero-breakdown { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+@media (min-width: 900px) { .chip { font-size: 1rem; padding: 2px 14px; } }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fff; color: var(--text);
+  border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; font-weight: 700; white-space: nowrap;
+}
+.chip::before { content: ""; width: 12px; height: 12px; border-radius: 3px; }
+.chip-principal::before { background: var(--principal); }
+.chip-gain::before { background: var(--gain); }
+
+/* ---------- レイアウト ---------- */
+.layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+.results { display: grid; gap: 16px; align-content: start; min-width: 0; }
+
+@media (min-width: 900px) {
+  .layout { grid-template-columns: minmax(340px, 420px) 1fr; align-items: start; }
+}
+
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  min-width: 0;
+}
+.panel-title { margin: 0 0 6px; font-size: 1.2rem; }
+.hint { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- プリセット ---------- */
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.preset {
+  min-height: 64px;
+  border: 2px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.preset[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
+
+.howto { margin: 4px 0 0; font-size: 0.9rem; color: var(--muted); }
+
+/* ---------- くわしい設定（折りたたみ） ---------- */
+.more { border-top: 1px solid #dde2e8; }
+.more > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 52px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-weight: 800;
+  color: var(--primary);
+  padding: 8px 0;
+}
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: "＋"; font-size: 1.3rem; }
+.more[open] > summary::after { content: "−"; }
+
+.reset-btn {
+  margin-top: 8px; width: 100%; min-height: 48px;
+  border: 2px solid var(--border); border-radius: 12px;
+  background: #fff; color: var(--muted);
+  font-weight: 700; cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* ---------- 入力欄 ---------- */
+.field { padding: 14px 0; border-top: 1px solid #dde2e8; }
+.field:first-of-type { border-top: 0; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.field-head label { font-weight: 800; font-size: 1.05rem; }
+.field-value { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+.num-row { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+.num-row input {
+  width: 9em;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.num-row input:focus-visible { outline: 3px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+.unit { font-weight: 700; }
+
+.stepper { display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 8px; }
+.stepper .num-row { min-width: 0; }
+.stepper .num-row input { width: 100%; min-width: 0; }
+.step-btn {
+  min-width: 64px; min-height: 48px;
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.step-btn:active, .preset:active, .apply-btn:active { transform: scale(0.97); }
+
+/* ---------- スライダー（指で操作しやすい大きいつまみ） ---------- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--thumb);
+  margin: 6px 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+input[type="range"]:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(to right, var(--primary) var(--fill, 50%), #c9d0da var(--fill, 50%));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb); height: var(--thumb);
+  margin-top: calc((12px - var(--thumb)) / 2);
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+input[type="range"]::-moz-range-track { height: 12px; border-radius: 6px; background: #c9d0da; }
+input[type="range"]::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--primary); }
+input[type="range"]::-moz-range-thumb {
+  width: var(--thumb); height: var(--thumb);
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- グラフ ---------- */
+.chart-wrap { position: relative; height: 340px; margin-top: 8px; }
+@media (min-width: 900px) { .chart-wrap { height: 420px; } }
+.chart-error { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 16px; margin: 0; }
+.chart-error[hidden] { display: none; }
+
+/* ---------- 比較 ---------- */
+.compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.cmp { border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid; }
+.cmp-label { font-weight: 700; font-size: 0.9rem; line-height: 1.3; }
+.cmp-label small { font-weight: 500; color: var(--muted); }
+.cmp-value { font-size: 1.3rem; font-weight: 900; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cmp-nisa { border-color: var(--primary); background: #e8f0fc; }
+.cmp-taxable { border-color: var(--border); background: #f6f7f9; }
+.cmp-deposit { border-color: var(--deposit); background: #f0f0f0; }
+.diff { margin: 12px 0 0; font-size: 1.15rem; font-weight: 700; text-align: center; }
+.diff b { color: var(--good); font-size: 1.5rem; }
+.diff-sub { margin-top: 4px; font-size: 1rem; }
+.diff-sub b { font-size: 1.1rem; color: var(--text); }
+@media (max-width: 420px) {
+  .compare { grid-template-columns: 1fr; }
+  .cmp { display: flex; justify-content: space-between; align-items: center; text-align: left; }
+  .cmp-value { margin: 0; }
+}
+
+/* ---------- NISA枠 ---------- */
+.meter { height: 18px; border-radius: 9px; background: #dde2e8; overflow: hidden; margin-top: 8px; border: 1px solid var(--border); }
+.meter-bar { height: 100%; width: 0; background: var(--principal); transition: width 0.2s; }
+.meter-bar.is-over { background: var(--danger-border); }
+.meter-text { margin: 6px 0 0; }
+.msg { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; border-left: 6px solid; font-weight: 600; }
+.msg-ok { background: var(--ok-bg); border-color: var(--good); }
+.msg-warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.msg-danger { background: var(--danger-bg); border-color: var(--danger-border); }
+.msg strong { font-size: 1.1em; }
+
+/* ---------- 逆算 ---------- */
+.reverse-grid { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 8px; }
+.rev-field { display: flex; flex-direction: column; font-weight: 800; }
+.reverse-result { margin: 12px 0 0; font-size: 1.15rem; font-weight: 700; }
+.reverse-result b { font-size: 1.7rem; color: var(--primary); }
+.reverse-note { margin: 4px 0 0; color: var(--danger-border); font-weight: 700; min-height: 1em; }
+.apply-btn {
+  margin-top: 10px; width: 100%; min-height: 52px;
+  border: 0; border-radius: 12px;
+  background: var(--primary); color: var(--primary-ink);
+  font-weight: 800; font-size: 1.05rem; cursor: pointer;
+}
+
+/* ---------- 注意事項 ---------- */
+.notes-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 16px; }
+.notes { scroll-margin-top: 170px; }
+.notes ul { margin: 8px 0 0; padding-left: 1.2em; }
+.notes li { margin: 8px 0; font-size: 0.95rem; }
+
+/* ---------- 注意書き（常時表示） ---------- */
+.disclaimer .badge {
+  display: inline-block;
+  background: #ffd23f;
+  color: #000;
+  border-radius: 6px;
+  padding: 0 8px;
+  margin-right: 4px;
+}
+.disclaimer a { color: #9cc8ff; white-space: nowrap; margin-left: 4px; }
+.disclaimer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<!-- 最終資産額（スマホでは画面上部に固定。スクロールすると小さくなる） -->
+<header class="hero" id="hero" aria-live="polite">
+  <div class="hero-inner">
+    <div class="hero-label"><span id="heroYears">20</span>年後の資産額（NISA）</div>
+    <div class="hero-amount" id="heroAmount">—</div>
+    <div class="hero-cond" id="heroCond"></div>
+    <div class="hero-breakdown">
+      <span class="chip chip-principal">元本 <b id="heroPrincipal">—</b></span>
+      <span class="chip chip-gain">運用益 <b id="heroGain">—</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ===== 入力 ===== -->
+  <section class="panel inputs" aria-labelledby="inputsTitle">
+    <h2 id="inputsTitle" class="visually-hidden">条件の入力</h2>
+
+    <div class="presets" role="group" aria-label="プリセット">
+      <button type="button" class="preset" data-monthly="10000" data-years="20">月1万円<br>×20年</button>
+      <button type="button" class="preset" data-monthly="30000" data-years="20">月3万円<br>×20年</button>
+      <button type="button" class="preset" data-monthly="50000" data-years="30">月5万円<br>×30年</button>
+    </div>
+    <p class="howto">ボタンを押すか、<b>●を指で左右に動かす</b>と、上の金額がすぐに変わります。</p>
+
+    <div class="field">
+      <div class="field-head">
+        <label for="monthlyRange">毎月の積立額</label>
+        <output id="monthlyOut" class="field-value"></output>
+      </div>
+      <input type="range" id="monthlyRange" min="1000" max="100000" step="1000" value="30000">
+      <div class="stepper">
+        <button type="button" class="step-btn" id="monthlyMinus" aria-label="1,000円減らす">−1,000</button>
+        <span class="num-row">
+          <input type="number" id="monthlyNum" inputmode="numeric" min="1000" max="100000" step="1000" value="30000" aria-label="毎月の積立額（円）">
+          <span class="unit">円</span>
+        </span>
+        <button type="button" class="step-btn" id="monthlyPlus" aria-label="1,000円増やす">＋1,000</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <label for="rateRange">想定利回り（年率）</label>
+        <output id="rateOut" class="field-value"></output>
+      </div>
+      <input type="range" id="rateRange" min="0" max="10" step="0.1" value="3">
+      <div class="num-row">
+        <input type="number" id="rateNum" inputmode="decimal" min="0" max="10" step="0.1" value="3" aria-label="想定利回り（%）">
+        <span class="unit">%</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <label for="yearsRange">積立期間</label>
+        <output id="yearsOut" class="field-value"></output>
+      </div>
+      <input type="range" id="yearsRange" min="1" max="40" step="1" value="20">
+      <div class="num-row">
+        <input type="number" id="yearsNum" inputmode="numeric" min="1" max="40" step="1" value="20" aria-label="積立期間（年）">
+        <span class="unit">年</span>
+      </div>
+    </div>
+
+    <details class="more" id="more">
+    <summary>くわしい設定（初期投資・預金利率）</summary>
+    <div class="field">
+      <div class="field-head">
+        <label for="initialRange">初期投資額</label>
+        <output id="initialOut" class="field-value"></output>
+      </div>
+      <input type="range" id="initialRange" min="0" max="1000" step="10" value="0">
+      <div class="num-row">
+        <input type="number" id="initialNum" inputmode="numeric" min="0" step="1" value="0" aria-label="初期投資額（万円）">
+        <span class="unit">万円</span>
+      </div>
+      <p class="hint">スライダーは1,000万円まで。それ以上は数値で入力できます。</p>
+    </div>
+
+    <div class="field field-compact">
+      <div class="field-head">
+        <label for="depositNum">比較用：預金の利率（年率）</label>
+      </div>
+      <div class="num-row">
+        <input type="number" id="depositNum" inputmode="decimal" min="0" max="10" step="0.01" value="0.2" aria-label="預金の利率（%）">
+        <span class="unit">%</span>
+      </div>
+    </div>
+    </details>
+
+    <button type="button" class="reset-btn" id="resetBtn">最初の条件に戻す</button>
+  </section>
+
+  <!-- ===== 結果 ===== -->
+  <section class="results" aria-labelledby="resultsTitle">
+    <h2 id="resultsTitle" class="visually-hidden">シミュレーション結果</h2>
+
+    <div class="panel">
+      <h3 class="panel-title">年ごとの推移</h3>
+      <p class="hint">棒グラフをタップすると、その年の金額が表示されます。</p>
+      <div class="chart-wrap">
+        <canvas id="chart" role="img" aria-label="元本と運用益の積み上げ棒グラフ、預金の推移の折れ線"></canvas>
+        <p id="chartError" class="chart-error" hidden>グラフを読み込めませんでした（インターネット接続をご確認ください）。数値の計算は通常どおり行えます。</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 class="panel-title">課税口座・預金との比較</h3>
+      <div class="compare">
+        <div class="cmp cmp-nisa">
+          <div class="cmp-label">NISA（非課税）</div>
+          <div class="cmp-value" id="cmpNisa">—</div>
+        </div>
+        <div class="cmp cmp-taxable">
+          <div class="cmp-label">課税口座<br><small>運用益に20.315%課税</small></div>
+          <div class="cmp-value" id="cmpTaxable">—</div>
+        </div>
+        <div class="cmp cmp-deposit">
+          <div class="cmp-label">預金<br><small id="cmpDepositRate">年0.2%・税引前</small></div>
+          <div class="cmp-value" id="cmpDeposit">—</div>
+        </div>
+      </div>
+      <p class="diff">NISAなら課税口座より <b id="diffTax">—</b> おトク</p>
+      <p class="diff diff-sub">預金との差：<b id="diffDeposit">—</b></p>
+    </div>
+
+    <div class="panel">
+      <h3 class="panel-title">NISA枠のチェック（新NISA）</h3>
+      <div class="meter" aria-hidden="true"><div class="meter-bar" id="meterBar"></div></div>
+      <p class="meter-text">生涯非課税保有限度額 1,800万円 のうち <b id="meterText">—</b></p>
+      <div id="limitMessages"></div>
+    </div>
+
+    <div class="panel">
+      <h3 class="panel-title">目標額から逆算</h3>
+      <div class="reverse-grid">
+        <label class="rev-field">目標額
+          <span class="num-row"><input type="number" id="targetNum" inputmode="numeric" min="0" step="100" value="2000"><span class="unit">万円</span></span>
+        </label>
+        <label class="rev-field">期間
+          <span class="num-row"><input type="number" id="targetYears" inputmode="numeric" min="1" max="40" step="1" value="20"><span class="unit">年</span></span>
+        </label>
+      </div>
+      <p class="hint">利回り・初期投資額は上で設定した値を使います。</p>
+      <p class="reverse-result">必要な毎月の積立額：<b id="reverseResult">—</b></p>
+      <p class="reverse-note" id="reverseNote"></p>
+      <button type="button" class="apply-btn" id="applyReverse">この条件でシミュレーション</button>
+    </div>
+  </section>
+</main>
+
+<section class="notes-wrap" aria-labelledby="notesTitle">
+  <div class="panel notes" id="notes">
+    <h2 id="notesTitle" class="panel-title">ご利用にあたっての注意事項</h2>
+    <ul>
+      <li><strong>本シミュレーターは、本NISA説明会での説明用に限ってご利用いただくものです。</strong>説明会以外での利用・転載・再配布はご遠慮ください。</li>
+      <li>本シミュレーションは、入力された条件（毎月の積立額・想定利回り・期間など）が一定のまま続くと<strong>仮定した試算</strong>です。実際の運用成果は市場環境などにより変動します。</li>
+      <li>本シミュレーションのいかなる内容も、将来の結果を予測し、保証するものではありません。投資には元本割れのリスクがあります。</li>
+      <li>手数料・信託報酬などの費用は考慮していません。課税口座との比較は、運用益に20.315%を一括で課税した簡易的な計算です。預金の金額は税引前です。</li>
+      <li>NISA枠（つみたて投資枠 年120万円、生涯非課税保有限度額 1,800万円）は作成時点の制度に基づいています。制度は変更される場合があります。</li>
+      <li>本シミュレーションは、<strong>特定の金融商品の取引を推奨し、勧誘するものではありません。</strong></li>
+      <li>本シミュレーションおよび掲載された情報を利用することで生じたいかなる損害（直接的・間接的を問わず）についても、本説明会の主催者は責任を負いません。実際の資産運用や投資判断に当たっては、必ずご自身の責任において最終的に判断してください。</li>
+      <li>入力された情報は、お使いの端末内での試算にのみ使用し、保存・送信することはありません。また、クッキーは使用していません。</li>
+      <li>情報の正確性には万全を期していますが、その正確性・完全性・信頼性などを保証するものではありません。内容は予告なく変更される場合があります。</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="disclaimer" role="note">
+  <span class="badge">本NISA説明会限り</span>
+  本シミュレーションは仮定による試算であり、将来の運用成果を保証するものではありません。投資には元本割れのリスクがあります。
+  <a href="#notes">注意事項</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+/**
+ * NISA積立シミュレーター 計算ロジック
+ * DOMに依存しない純粋関数のみ。ブラウザでは window.NisaCalc、Node では require() で利用。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.NisaCalc = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var TAX_RATE = 0.20315;            // 課税口座の税率（所得税15.315% + 住民税5%）
+  var TSUMITATE_ANNUAL_LIMIT = 1200000; // つみたて投資枠 年120万円
+  var GROWTH_ANNUAL_LIMIT = 2400000;    // 成長投資枠 年240万円
+  var LIFETIME_LIMIT = 18000000;        // 生涯非課税保有限度額 1,800万円
+
+  /** 年利 → 月利（月次複利）: r = (1 + 年利)^(1/12) − 1 */
+  function monthlyRate(annualRate) {
+    return Math.pow(1 + annualRate, 1 / 12) - 1;
+  }
+
+  /**
+   * 将来価値（閉形式）。初期投資は開始時に一括、積立は毎月末。
+   * r = 0 のときはゼロ除算を避けて単純合計。
+   */
+  function futureValue(monthly, annualRate, months, initial) {
+    initial = initial || 0;
+    var r = monthlyRate(annualRate);
+    if (r === 0) return initial + monthly * months;
+    var g = Math.pow(1 + r, months);
+    return initial * g + monthly * (g - 1) / r;
+  }
+
+  /**
+   * 月次シミュレーション。年ごとの推移を返す（0年目 = 開始時点）。
+   * @returns {{year:number, principal:number, value:number, gain:number}[]}
+   */
+  function simulate(opts) {
+    var monthly = opts.monthly || 0;
+    var years = opts.years || 0;
+    var initial = opts.initial || 0;
+    var r = monthlyRate(opts.annualRate || 0);
+
+    var value = initial;
+    var principal = initial;
+    var rows = [{ year: 0, principal: principal, value: value, gain: 0 }];
+    for (var m = 1; m <= years * 12; m++) {
+      value = value * (1 + r) + monthly; // 月初残高に利息 → 月末に積立
+      principal += monthly;
+      if (m % 12 === 0) {
+        rows.push({ year: m / 12, principal: principal, value: value, gain: value - principal });
+      }
+    }
+    return rows;
+  }
+
+  /** 課税口座との比較（運用益に一括で20.315%課税したと仮定） */
+  function compareTaxable(finalValue, principal) {
+    var gain = finalValue - principal;
+    var tax = gain > 0 ? gain * TAX_RATE : 0;
+    return { nisa: finalValue, taxable: finalValue - tax, tax: tax };
+  }
+
+  /**
+   * 目標額から必要な毎月の積立額を逆算（初期投資額も考慮）。
+   * 初期投資だけで目標に届く場合は 0。
+   */
+  function requiredMonthly(target, annualRate, years, initial) {
+    initial = initial || 0;
+    var n = years * 12;
+    if (n <= 0) return 0;
+    var r = monthlyRate(annualRate);
+    var needed;
+    if (r === 0) {
+      needed = (target - initial) / n;
+    } else {
+      var g = Math.pow(1 + r, n);
+      needed = (target - initial * g) * r / (g - 1);
+    }
+    return Math.max(0, needed);
+  }
+
+  /**
+   * 新NISAの枠チェック。
+   * - 1年目の投資額（初期投資＋12か月分）がつみたて投資枠／年間合計枠を超えるか
+   * - 元本累計が生涯限度額 1,800万円 に達する年（何年目か）。達しなければ null
+   */
+  function checkNisaLimits(opts) {
+    var monthly = opts.monthly || 0;
+    var initial = opts.initial || 0;
+    var years = opts.years || 0;
+
+    var firstYear = initial + monthly * 12;
+    var totalPrincipal = initial + monthly * years * 12;
+    var reachYear = null;
+    var reachMonth = null;
+    if (initial >= LIFETIME_LIMIT) {
+      reachYear = 1;
+      reachMonth = 0;
+    } else if (monthly > 0) {
+      var m = Math.ceil((LIFETIME_LIMIT - initial) / monthly); // 何か月目で到達するか
+      if (m <= years * 12) {
+        reachMonth = m;
+        reachYear = Math.ceil(m / 12);
+      }
+    }
+    return {
+      firstYearAmount: firstYear,
+      overTsumitate: monthly * 12 > TSUMITATE_ANNUAL_LIMIT,
+      firstYearOverTsumitate: firstYear > TSUMITATE_ANNUAL_LIMIT,
+      firstYearOverTotal: firstYear > TSUMITATE_ANNUAL_LIMIT + GROWTH_ANNUAL_LIMIT,
+      totalPrincipal: totalPrincipal,
+      overLifetime: totalPrincipal > LIFETIME_LIMIT,   // 期間中に上限を超える
+      reachesLifetime: reachYear !== null,              // 期間中に上限に達する（ちょうど含む）
+      reachYear: reachYear,
+      reachMonth: reachMonth
+    };
+  }
+
+  /** 金額を「1,234万円」「1億2,345万円」「5,000円」のように表示 */
+  function formatYen(yen) {
+    var sign = yen < 0 ? '-' : '';
+    var a = Math.abs(yen);
+    if (a < 10000) return sign + Math.round(a).toLocaleString('ja-JP') + '円';
+    var man = a / 10000;
+    if (man < 100) {
+      // 100万円未満は小数1桁（例: 12.7万円）
+      var s = (Math.round(man * 10) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
+      return sign + s + '万円';
+    }
+    man = Math.round(man);
+    if (man >= 10000) {
+      var oku = Math.floor(man / 10000);
+      var rest = man % 10000;
+      return sign + oku.toLocaleString('ja-JP') + '億' + (rest ? rest.toLocaleString('ja-JP') + '万' : '') + '円';
+    }
+    return sign + man.toLocaleString('ja-JP') + '万円';
+  }
+
+  return {
+    TAX_RATE: TAX_RATE,
+    TSUMITATE_ANNUAL_LIMIT: TSUMITATE_ANNUAL_LIMIT,
+    GROWTH_ANNUAL_LIMIT: GROWTH_ANNUAL_LIMIT,
+    LIFETIME_LIMIT: LIFETIME_LIMIT,
+    monthlyRate: monthlyRate,
+    futureValue: futureValue,
+    simulate: simulate,
+    compareTaxable: compareTaxable,
+    requiredMonthly: requiredMonthly,
+    checkNisaLimits: checkNisaLimits,
+    formatYen: formatYen
+  };
+});
+
+</script>
+<script>
+/* NISA積立シミュレーター 画面処理（計算は calc.js） */
+(function () {
+  'use strict';
+  var C = window.NisaCalc;
+  var fmt = C.formatYen;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var COLORS = { principal: '#1f5fbf', gain: '#e07000', deposit: '#222222' };
+
+  // ---------- 入力（スライダー＋数値入力の連動） ----------
+  // 利回りは%、初期投資額は万円単位で保持し、計算時に換算する
+  var fields = {
+    monthly: { range: $('monthlyRange'), num: $('monthlyNum'), out: $('monthlyOut'), min: 1000, max: 100000, step: 1000,
+      label: function (v) { return '月 ' + fmt(v); } },
+    rate: { range: $('rateRange'), num: $('rateNum'), out: $('rateOut'), min: 0, max: 10, step: 0.1,
+      label: function (v) { return '年 ' + v.toFixed(1) + '%'; } },
+    years: { range: $('yearsRange'), num: $('yearsNum'), out: $('yearsOut'), min: 1, max: 40, step: 1,
+      label: function (v) { return v + '年'; } },
+    initial: { range: $('initialRange'), num: $('initialNum'), out: $('initialOut'), min: 0, max: 100000, step: 1,
+      label: function (v) { return v === 0 ? 'なし' : fmt(v * 10000); } }
+  };
+  var values = {};
+
+  function clamp(v, f) {
+    v = Math.min(f.max, Math.max(f.min, v));
+    var decimals = (String(f.step).split('.')[1] || '').length;
+    return Number((Math.round(v / f.step) * f.step).toFixed(decimals));
+  }
+
+  function setFill(range) {
+    var min = +range.min, max = +range.max;
+    var p = Math.min(100, Math.max(0, (+range.value - min) / (max - min) * 100));
+    range.style.setProperty('--fill', p + '%');
+  }
+
+  /** 値を確定して両方の入力欄に反映 */
+  function setValue(key, v, opts) {
+    var f = fields[key];
+    v = clamp(v, f);
+    values[key] = v;
+    f.range.value = v;
+    setFill(f.range);
+    if (!(opts && opts.keepNum)) f.num.value = v;
+    f.out.textContent = f.label(v);
+  }
+
+  Object.keys(fields).forEach(function (key) {
+    var f = fields[key];
+    f.range.addEventListener('input', function () {
+      setValue(key, parseFloat(f.range.value));
+      update();
+    });
+    // 入力中は欄を書き換えず、確定時（change）に丸めた値を書き戻す
+    f.num.addEventListener('input', function () {
+      var v = parseFloat(f.num.value);
+      if (isNaN(v)) return;
+      setValue(key, v, { keepNum: true });
+      update();
+    });
+    f.num.addEventListener('change', function () {
+      var v = parseFloat(f.num.value);
+      setValue(key, isNaN(v) ? values[key] : v);
+      update();
+    });
+  });
+
+  $('monthlyMinus').addEventListener('click', function () { setValue('monthly', values.monthly - 1000); update(); });
+  $('monthlyPlus').addEventListener('click', function () { setValue('monthly', values.monthly + 1000); update(); });
+
+  var depositInput = $('depositNum');
+  function depositRate() {
+    var v = parseFloat(depositInput.value);
+    return isNaN(v) ? 0 : Math.min(10, Math.max(0, v));
+  }
+  depositInput.addEventListener('input', update);
+
+  // ---------- プリセット ----------
+  var presets = Array.prototype.slice.call(document.querySelectorAll('.preset'));
+  presets.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setValue('monthly', +btn.dataset.monthly);
+      setValue('years', +btn.dataset.years);
+      update();
+    });
+  });
+
+  // ---------- 逆算 ----------
+  var targetNum = $('targetNum'), targetYears = $('targetYears');
+  var lastRequired = null;
+  targetNum.addEventListener('input', updateReverse);
+  targetYears.addEventListener('input', updateReverse);
+  $('applyReverse').addEventListener('click', function () {
+    if (lastRequired === null) return;
+    setValue('monthly', Math.ceil(lastRequired / 1000) * 1000);
+    setValue('years', parseInt(targetYears.value, 10));
+    update();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  function updateReverse() {
+    var target = parseFloat(targetNum.value) * 10000;
+    var yrs = parseInt(targetYears.value, 10);
+    var note = $('reverseNote');
+    if (!(target > 0) || !(yrs >= 1 && yrs <= 40)) {
+      lastRequired = null;
+      $('reverseResult').textContent = '—';
+      note.textContent = '目標額と期間（1〜40年）を入力してください。';
+      return;
+    }
+    var m = C.requiredMonthly(target, values.rate / 100, yrs, values.initial * 10000);
+    lastRequired = m;
+    $('reverseResult').textContent = m === 0 ? '0円（初期投資だけで到達）' : '約 ' + (Math.ceil(m / 100) * 100).toLocaleString('ja-JP') + '円';
+    note.textContent = m > 100000
+      ? 'つみたて投資枠の上限（月10万円）を超えています。期間を延ばすか目標額を見直しましょう。'
+      : '';
+  }
+
+  // ---------- グラフ ----------
+  var chart = null;
+  function initChart() {
+    if (typeof window.Chart === 'undefined') {
+      $('chartError').hidden = false;
+      return;
+    }
+    Chart.defaults.font.size = 15;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.color = '#0d1117';
+    chart = new Chart($('chart'), {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [
+          { label: '元本', data: [], backgroundColor: COLORS.principal, stack: 'nisa', order: 2, pointStyle: 'rect' },
+          { label: '運用益', data: [], backgroundColor: COLORS.gain, stack: 'nisa', order: 2, pointStyle: 'rect' },
+          { label: '預金', data: [], type: 'line', borderColor: COLORS.deposit, backgroundColor: COLORS.deposit, pointStyle: 'line',
+            borderWidth: 3, borderDash: [8, 5], pointRadius: 0, pointHoverRadius: 6, stack: 'deposit', order: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } },
+          y: { stacked: true, beginAtZero: true,
+            ticks: { callback: function (v) { return fmt(v); } } }
+        },
+        plugins: {
+          legend: { position: 'top', labels: { usePointStyle: true, pointStyleWidth: 22, padding: 14, font: { size: 15, weight: 'bold' } } },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            titleFont: { size: 16, weight: 'bold' },
+            bodyFont: { size: 15 },
+            footerFont: { size: 16, weight: 'bold' },
+            padding: 12,
+            callbacks: {
+              title: function (items) { return items[0].label; },
+              label: function (ctx) { return ' ' + ctx.dataset.label + '：' + fmt(ctx.parsed.y); },
+              footer: function (items) {
+                var i = items[0].dataIndex, d = chart.data.datasets;
+                return 'NISA合計：' + fmt(d[0].data[i] + d[1].data[i]);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------- 再計算と表示 ----------
+  function update() {
+    var monthly = values.monthly, years = values.years;
+    var rate = values.rate / 100, initial = values.initial * 10000;
+
+    var rows = C.simulate({ monthly: monthly, annualRate: rate, years: years, initial: initial });
+    var dep = C.simulate({ monthly: monthly, annualRate: depositRate() / 100, years: years, initial: initial });
+    var last = rows[rows.length - 1];
+    var depLast = dep[dep.length - 1];
+
+    // 最終資産額
+    $('heroYears').textContent = years;
+    $('heroAmount').textContent = fmt(last.value);
+    $('heroCond').textContent = '毎月' + fmt(monthly) + '・年' + values.rate.toFixed(1) + '%・' + years + '年' +
+      (initial > 0 ? '・初期' + fmt(initial) : '');
+    $('heroPrincipal').textContent = fmt(last.principal);
+    $('heroGain').textContent = fmt(last.gain);
+
+    // 比較
+    var cmp = C.compareTaxable(last.value, last.principal);
+    $('cmpNisa').textContent = fmt(cmp.nisa);
+    $('cmpTaxable').textContent = fmt(cmp.taxable);
+    $('cmpDeposit').textContent = fmt(depLast.value);
+    $('cmpDepositRate').textContent = '年' + depositRate() + '%・税引前';
+    $('diffTax').textContent = fmt(cmp.tax);
+    var dd = last.value - depLast.value;
+    $('diffDeposit').textContent = (dd >= 0 ? '+' : '') + fmt(dd);
+
+    // NISA枠
+    renderLimits(C.checkNisaLimits({ monthly: monthly, initial: initial, years: years }));
+
+    // グラフ（1年目〜）
+    if (chart) {
+      var body = rows.slice(1);
+      chart.data.labels = body.map(function (r) { return r.year + '年目'; });
+      chart.data.datasets[0].data = body.map(function (r) { return r.principal; });
+      chart.data.datasets[1].data = body.map(function (r) { return Math.max(0, r.gain); });
+      chart.data.datasets[2].data = dep.slice(1).map(function (r) { return r.value; });
+      chart.update('none');
+    }
+
+    // プリセットの選択状態
+    presets.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(+btn.dataset.monthly === monthly && +btn.dataset.years === years));
+    });
+
+    updateReverse();
+  }
+
+  function renderLimits(l) {
+    var LIMIT = C.LIFETIME_LIMIT;
+    var used = Math.min(l.totalPrincipal, LIMIT);
+    var bar = $('meterBar');
+    bar.style.width = (used / LIMIT * 100) + '%';
+    bar.classList.toggle('is-over', l.overLifetime);
+    $('meterText').textContent = fmt(l.totalPrincipal) + '（' + Math.round(l.totalPrincipal / LIMIT * 100) + '%）';
+
+    var msgs = [];
+    if (l.overLifetime) {
+      msgs.push(['danger', '<strong>⚠ 生涯の非課税枠 1,800万円 を超えます</strong><br>元本累計 ' + fmt(l.totalPrincipal) +
+        '。<strong>' + l.reachYear + '年目</strong>（' + l.reachMonth + 'か月目）で上限に達します。' +
+        '<br><small>上限到達後はNISA枠で新たに投資できません（このグラフでは上限後もそのまま積み立てた場合を表示しています）。</small>']);
+    } else if (l.reachesLifetime) {
+      msgs.push(['warn', '<strong>' + l.reachYear + '年目で生涯の非課税枠 1,800万円 をちょうど使い切ります。</strong>']);
+    } else {
+      msgs.push(['ok', '生涯の非課税枠の範囲内です（残り ' + fmt(LIMIT - l.totalPrincipal) + '）。']);
+    }
+    if (l.overTsumitate) {
+      msgs.push(['danger', '<strong>⚠ つみたて投資枠（年120万円・月10万円）を超えています。</strong>']);
+    } else if (l.firstYearOverTotal) {
+      msgs.push(['danger', '<strong>⚠ 1年目の投資額 ' + fmt(l.firstYearAmount) + ' が年間投資枠の合計 360万円 を超えています。</strong>' +
+        '<br><small>NISAの年間投資枠は つみたて投資枠120万円＋成長投資枠240万円 です。</small>']);
+    } else if (l.firstYearOverTsumitate) {
+      msgs.push(['warn', '1年目は初期投資を含めて ' + fmt(l.firstYearAmount) + '。つみたて投資枠（年120万円）を超える分は<strong>成長投資枠（年240万円）</strong>の利用が必要です。']);
+    }
+    $('limitMessages').innerHTML = msgs.map(function (m) {
+      return '<p class="msg msg-' + m[0] + '">' + m[1] + '</p>';
+    }).join('');
+  }
+
+  // ---------- スクロールしたら上部の金額表示を小さくする（スマホで入力欄を広く使うため） ----------
+  var hero = $('hero');
+  var compact = false;
+  function onScroll() {
+    // 切り替わりでレイアウトが動いて行き来しないよう、戻す位置に余裕を持たせる
+    var next = compact ? window.scrollY > 20 : window.scrollY > 80;
+    if (next !== compact) {
+      compact = next;
+      hero.classList.toggle('is-compact', compact);
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // ---------- 初期化 ----------
+  var defaults = {};
+  Object.keys(fields).forEach(function (key) {
+    defaults[key] = parseFloat(fields[key].num.value);
+    setValue(key, defaults[key]);
+  });
+  var defaultDeposit = depositInput.value;
+
+  $('resetBtn').addEventListener('click', function () {
+    Object.keys(defaults).forEach(function (key) { setValue(key, defaults[key]); });
+    depositInput.value = defaultDeposit;
+    $('more').open = false;
+    update();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  initChart();
+  update();
+  onScroll();
+})();
+
+</script>
+</body>
+</html>
