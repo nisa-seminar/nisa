@@ -10,25 +10,27 @@
 <meta name="theme-color" content="#0a3d91">
 <meta name="format-detection" content="telephone=no">
 <style>
-/* NISA積立シミュレーター — 大きな文字・高コントラスト（プロジェクター投影対応） */
+/* NISA積立シミュレーター
+   説明会スライド（ラーメンのプラン例）と同じ配色。大きな文字・高コントラスト（プロジェクター投影対応） */
 :root {
-  --bg: #f2f4f7;
-  --surface: #ffffff;
-  --text: #0d1117;
-  --muted: #3d4651;
-  --border: #b8c0cc;
-  --primary: #0a3d91;       /* 濃い青：操作系 */
-  --primary-ink: #ffffff;
-  --principal: #1f5fbf;     /* 元本 */
-  --gain: #e07000;          /* 運用益 */
-  --deposit: #4a4a4a;       /* 預金 */
-  --good: #0a6b2c;
-  --warn-bg: #fff1d6;
-  --warn-border: #c26a00;
-  --danger-bg: #ffe3e3;
-  --danger-border: #b00020;
-  --ok-bg: #e3f5e8;
-  --radius: 14px;
+  --bg: #FFF8EC;          /* 生成り：スライドの背景 */
+  --surface: #FFFFFF;
+  --ink: #23233A;         /* 墨紺：見出し・本文 */
+  --muted: #5F5D70;
+  --line: #EADFCB;        /* カードの縁 */
+  --track: #F3EADB;       /* 帯・メーターの下地 */
+
+  --teal: #17A398;        /* 元本 */
+  --teal-ink: #0B7A70;    /* 白地に置く文字用 */
+  --teal-tint: #E2F4F1;
+  --coral: #EE5A52;       /* 運用益 */
+  --coral-ink: #C2382F;
+  --coral-tint: #FDE6E4;
+  --mustard: #F5C342;     /* 選択中・目印 */
+  --mustard-ink: #8A6400;
+  --mustard-tint: #FFF3D1;
+
+  --radius: 18px;
   --thumb: 36px;
   font-size: 18px;
 }
@@ -38,11 +40,12 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--text);
-  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", Meiryo, system-ui, sans-serif;
-  line-height: 1.5;
+  color: var(--ink);
+  /* BIZ UDPゴシック：ユニバーサルデザインフォント（Windowsに標準搭載）。Webフォントは読み込まない */
+  font-family: "BIZ UDPGothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, system-ui, sans-serif;
+  line-height: 1.6;
   -webkit-text-size-adjust: 100%;
-  padding-bottom: calc(7rem + env(safe-area-inset-bottom)); /* 注意書きの分 */
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom)); /* 注意書きの分 */
 }
 
 .visually-hidden {
@@ -53,47 +56,73 @@ body {
 button, input { font: inherit; color: inherit; }
 b { font-weight: 800; }
 small { font-size: 0.8em; }
+p { margin: 0; }
+
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 /* ---------- 最終資産額（上部固定） ---------- */
 .hero {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--primary);
-  color: var(--primary-ink);
-  padding: 10px 16px 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  background: var(--bg);
+  border-bottom: 1.5px solid var(--line);
+  padding: 12px 16px 12px;
 }
-.hero-inner { max-width: 1200px; margin: 0 auto; text-align: center; }
-.hero-label { font-size: 0.95rem; font-weight: 700; opacity: 0.95; }
+.hero-inner { max-width: 1200px; margin: 0 auto; }
+.hero-label { font-size: 0.9rem; font-weight: 800; color: var(--muted); }
 .hero-amount {
-  font-size: clamp(2.2rem, 11vw, 4rem);
+  font-size: clamp(2.6rem, 13vw, 4.6rem);
   font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.hero-cond { font-size: 0.85rem; font-weight: 700; opacity: 0.9; margin-top: 2px; }
+/* 単位は数字より小さく、数字の大きさを主役にする */
+.hero-amount .u { font-size: 0.42em; font-weight: 800; margin-left: 0.06em; letter-spacing: 0; }
+
+/* 元本｜運用益 の帯 */
+.band {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-top: 8px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--track);
+}
+.band span { display: block; height: 100%; transition: width 0.25s ease-out; }
+.band-p { background: var(--teal); }
+.band-g { background: var(--coral); }
+.band-legend {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin-top: 4px;
+  font-size: 0.85rem; font-weight: 700;
+}
+.lg { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lg-p b { color: var(--teal-ink); }
+.lg-g b { color: var(--coral-ink); }
+.hero-cond { margin-top: 2px; font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+.hero-cond .ramen { display: inline-block; color: var(--coral-ink); }
 
 /* スクロール時は小さく（入力欄やグラフを広く見せる） */
-.hero-label, .hero-amount { transition: font-size 0.15s; }
-.hero.is-compact { padding: 6px 16px 8px; }
-.hero.is-compact .hero-label { font-size: 0.8rem; }
-.hero.is-compact .hero-amount { font-size: 2rem; }
+.hero.is-compact { padding: 6px 16px 8px; box-shadow: 0 2px 10px rgba(35, 35, 58, 0.08); }
+.hero.is-compact .hero-label { font-size: 0.78rem; }
+.hero.is-compact .hero-amount { font-size: 2.1rem; }
+.hero.is-compact .band { height: 8px; margin-top: 4px; }
+.hero.is-compact .band-legend { font-size: 0.78rem; margin-top: 2px; }
 .hero.is-compact .hero-cond { display: none; }
-.hero.is-compact .hero-breakdown { margin-top: 4px; }
-.hero.is-compact .chip { font-size: 0.8rem; }
 
-.hero-breakdown { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
-@media (min-width: 900px) { .chip { font-size: 1rem; padding: 2px 14px; } }
-.chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #fff; color: var(--text);
-  border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; font-weight: 700; white-space: nowrap;
+@media (min-width: 900px) {
+  .hero { padding: 16px 24px; }
+  .hero-inner { display: grid; grid-template-columns: auto 1fr; column-gap: 32px; align-items: end; }
+  .hero-label { grid-column: 1 / -1; }
+  .hero-amount { grid-row: 2 / span 3; }
+  .band { margin-top: 0; height: 18px; border-radius: 9px; }
+  .band-legend { font-size: 0.95rem; }
+  .hero.is-compact .hero-amount { grid-row: 2 / span 2; }
 }
-.chip::before { content: ""; width: 12px; height: 12px; border-radius: 3px; }
-.chip-principal::before { background: var(--principal); }
-.chip-gain::before { background: var(--gain); }
 
 /* ---------- レイアウト ---------- */
 .layout {
@@ -108,6 +137,8 @@ small { font-size: 0.8em; }
 /* PC：プラン例とグラフは横いっぱい、その下に「細かく設定」と結果を横並び */
 @media (min-width: 900px) {
   .layout {
+    padding: 24px;
+    gap: 20px;
     grid-template-columns: minmax(340px, 420px) 1fr;
     grid-template-areas: "presets presets" "chart chart" "inputs results";
     align-items: start;
@@ -116,86 +147,111 @@ small { font-size: 0.8em; }
   .chart-panel { grid-area: chart; }
   .inputs { grid-area: inputs; }
   .results { grid-area: results; }
-  .preset-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
-  .preset-group .preset-label { margin-top: 0; }
+  .preset-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
 }
 
 .panel {
   background: var(--surface);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 18px;
   min-width: 0;
 }
-.panel-title { margin: 0 0 6px; font-size: 1.2rem; }
-.hint { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+.panel-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 800; line-height: 1.4; }
+.hint { margin-top: 2px; font-size: 0.85rem; color: var(--muted); }
 
-/* ---------- プリセット ---------- */
-.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+/* ---------- プラン例 ---------- */
+.preset-label { margin: 6px 0 6px; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+.preset-group + .preset-group { margin-top: 10px; }
+@media (min-width: 900px) { .preset-group + .preset-group { margin-top: 0; } }
+.presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
 .preset {
-  min-height: 64px;
-  border: 2px solid var(--primary);
-  background: #fff;
-  color: var(--primary);
-  border-radius: 12px;
+  min-height: 60px;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 14px;
   font-weight: 800;
   font-size: clamp(0.8rem, 4vw, 0.95rem);
   line-height: 1.3;
   padding: 4px 2px;
   white-space: nowrap;
   cursor: pointer;
-}
-.preset[aria-pressed="true"] { background: var(--primary); color: var(--primary-ink); }
-
-.preset-label { margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--muted); }
-.preset-group + .preset-group { margin-top: 10px; }
-@media (min-width: 900px) { .preset-group + .preset-group { margin-top: 0; } }
-.howto { margin: 4px 0 0; font-size: 0.9rem; color: var(--muted); }
-
-/* ---------- くわしい設定（折りたたみ） ---------- */
-.more { border-top: 1px solid #dde2e8; }
-.more > summary {
-  list-style: none;
-  cursor: pointer;
-  min-height: 52px;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  font-weight: 800;
-  color: var(--primary);
-  padding: 8px 0;
-}
-.more > summary::-webkit-details-marker { display: none; }
-.more > summary::after { content: "＋"; font-size: 1.3rem; }
-.more[open] > summary::after { content: "−"; }
-
-.reset-btn {
-  margin-top: 8px; width: 100%; min-height: 48px;
-  border: 2px solid var(--border); border-radius: 12px;
-  background: #fff; color: var(--muted);
-  font-weight: 700; cursor: pointer;
   touch-action: manipulation;
 }
+.preset[aria-pressed="true"] { background: var(--ink); color: #fff; }
+@media (min-width: 900px) { .preset { min-height: 86px; font-size: 1.05rem; } } /* PCではラーメンのカードと高さをそろえる */
 
-/* ---------- 入力欄 ---------- */
-.field { padding: 14px 0; border-top: 1px solid #dde2e8; }
+/* ラーメンのカード（スライドの「ラーメン1杯ガマン」と同じ見た目） */
+.preset-ramen {
+  --tone: var(--teal); --tone-ink: var(--teal-ink); --tone-tint: var(--teal-tint);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-height: 0;
+  padding: 12px 10px 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  text-align: left;
+  white-space: normal;
+}
+.tone-mustard { --tone: var(--mustard); --tone-ink: var(--mustard-ink); --tone-tint: var(--mustard-tint); }
+.tone-coral { --tone: var(--coral); --tone-ink: var(--coral-ink); --tone-tint: var(--coral-tint); }
+.preset-ramen::before {
+  content: "";
+  width: 32px; height: 6px; border-radius: 3px;
+  background: var(--tone);
+  margin-bottom: 4px;
+}
+.pr-title { font-size: 0.72rem; font-weight: 800; line-height: 1.35; }
+.pr-amt { font-size: clamp(1rem, 5vw, 1.35rem); font-weight: 900; color: var(--tone-ink); white-space: nowrap; line-height: 1.2; }
+.pr-yrs { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.preset-ramen[aria-pressed="true"] {
+  background: var(--tone-tint);
+  color: var(--ink);
+  border-color: var(--tone);
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+}
+
+/* スマホ：3枚並べると金額が入らないので、1枚1行の帯にする */
+@media (max-width: 599px) {
+  .presets-ramen { grid-template-columns: 1fr; gap: 6px; }
+  .preset-ramen {
+    display: grid;
+    grid-template-columns: 6px 1fr auto;
+    grid-template-areas: "bar title amt" "bar yrs amt";
+    column-gap: 12px; row-gap: 0;
+    align-items: center;
+    padding: 8px 14px 8px 12px;
+  }
+  .preset-ramen::before { grid-area: bar; width: 6px; height: 100%; min-height: 34px; margin: 0; }
+  .pr-title { grid-area: title; font-size: 0.82rem; white-space: nowrap; }
+  .pr-yrs { grid-area: yrs; }
+  .pr-amt { grid-area: amt; font-size: 1.1rem; }
+}
+
+.howto { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- 細かく設定する ---------- */
+.field { padding: 14px 0; border-top: 1px solid var(--line); }
 .field:first-of-type { border-top: 0; }
 .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .field-head label { font-weight: 800; font-size: 1.05rem; }
-.field-value { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-variant-numeric: tabular-nums; }
+.field-value { font-size: 1.6rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .num-row { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
 .num-row input {
   width: 9em;
   min-height: 48px;
   padding: 6px 10px;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
+  border: 1.5px solid #D9CBB2;
+  border-radius: 12px;
+  background: var(--surface);
   font-size: 1.1rem;
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.num-row input:focus-visible { outline: 3px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+.num-row input:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
 .unit { font-weight: 700; }
 
 .stepper { display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 8px; }
@@ -203,10 +259,10 @@ small { font-size: 0.8em; }
 .stepper .num-row input { width: 100%; min-width: 0; }
 .step-btn {
   min-width: 64px; min-height: 48px;
-  border: 2px solid var(--primary);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--primary);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
   font-weight: 800;
   font-size: 0.9rem;
   cursor: pointer;
@@ -214,7 +270,7 @@ small { font-size: 0.8em; }
 }
 .step-btn:active, .preset:active, .apply-btn:active { transform: scale(0.97); }
 
-/* ---------- スライダー（指で操作しやすい大きいつまみ） ---------- */
+/* スライダー（指で操作しやすい大きいつまみ） */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -225,10 +281,10 @@ input[type="range"] {
   cursor: pointer;
   touch-action: pan-y;
 }
-input[type="range"]:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+input[type="range"]:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 12px; border-radius: 6px;
-  background: linear-gradient(to right, var(--primary) var(--fill, 50%), #c9d0da var(--fill, 50%));
+  background: linear-gradient(to right, var(--teal) var(--fill, 50%), var(--track) var(--fill, 50%));
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -236,17 +292,39 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: calc((12px - var(--thumb)) / 2);
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 4px solid var(--ink);
+  box-shadow: 0 2px 6px rgba(35, 35, 58, 0.25);
 }
-input[type="range"]::-moz-range-track { height: 12px; border-radius: 6px; background: #c9d0da; }
-input[type="range"]::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--primary); }
+input[type="range"]::-moz-range-track { height: 12px; border-radius: 6px; background: var(--track); }
+input[type="range"]::-moz-range-progress { height: 12px; border-radius: 6px; background: var(--teal); }
 input[type="range"]::-moz-range-thumb {
   width: var(--thumb); height: var(--thumb);
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 4px solid var(--ink);
+  box-shadow: 0 2px 6px rgba(35, 35, 58, 0.25);
+}
+
+/* くわしい設定（折りたたみ） */
+.more { border-top: 1px solid var(--line); }
+.more > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 52px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-weight: 800;
+  padding: 8px 0;
+}
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: "＋"; font-size: 1.3rem; }
+.more[open] > summary::after { content: "−"; }
+
+.reset-btn {
+  margin-top: 8px; width: 100%; min-height: 48px;
+  border: 1.5px solid var(--line); border-radius: 14px;
+  background: transparent; color: var(--muted);
+  font-weight: 700; cursor: pointer;
+  touch-action: manipulation;
 }
 
 /* ---------- グラフ ---------- */
@@ -255,76 +333,91 @@ input[type="range"]::-moz-range-thumb {
 .chart-error { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 16px; margin: 0; }
 .chart-error[hidden] { display: none; }
 
-/* ---------- 比較 ---------- */
-.compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-.cmp { border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid; }
-.cmp-label { font-weight: 700; font-size: 0.9rem; line-height: 1.3; }
-.cmp-label small { font-weight: 500; color: var(--muted); }
-.cmp-value { font-size: 1.3rem; font-weight: 900; margin-top: 4px; font-variant-numeric: tabular-nums; }
-.cmp-nisa { border-color: var(--primary); background: #e8f0fc; }
-.cmp-taxable { border-color: var(--border); background: #f6f7f9; }
-.cmp-deposit { border-color: var(--deposit); background: #f0f0f0; }
-.diff { margin: 12px 0 0; font-size: 1.15rem; font-weight: 700; text-align: center; }
-.diff b { color: var(--good); font-size: 1.5rem; }
-.diff-sub { margin-top: 4px; font-size: 1rem; }
-.diff-sub b { font-size: 1.1rem; color: var(--text); }
-@media (max-width: 420px) {
-  .compare { grid-template-columns: 1fr; }
-  .cmp { display: flex; justify-content: space-between; align-items: center; text-align: left; }
-  .cmp-value { margin: 0; }
+/* ---------- 課税口座・預金との比較（棒の長さで比べる） ---------- */
+.bars { display: grid; gap: 14px; margin-top: 12px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "label val" "track track";
+  align-items: end;
+  row-gap: 4px;
 }
+.bar-label { grid-area: label; font-weight: 800; }
+.bar-label small { display: block; font-weight: 500; color: var(--muted); line-height: 1.3; }
+.bar-val { grid-area: val; font-size: 1.3rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar-track { grid-area: track; height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; }
+.bar-fill { display: block; height: 100%; width: 0; border-radius: 7px; transition: width 0.25s ease-out; }
+.row-nisa .bar-fill { background: var(--teal); }
+.row-taxable .bar-fill { background: #9ACFC9; }
+.row-deposit .bar-fill { background: var(--muted); }
+
+.diffs { margin: 16px 0 0; }
+.diffs > div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.diffs dt { font-size: 0.9rem; font-weight: 700; color: var(--muted); }
+.diffs dd { margin: 0; font-size: 1.3rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.diffs > div:first-child dd { color: var(--teal-ink); }
 
 /* ---------- NISA枠 ---------- */
-.meter { height: 18px; border-radius: 9px; background: #dde2e8; overflow: hidden; margin-top: 8px; border: 1px solid var(--border); }
-.meter-bar { height: 100%; width: 0; background: var(--principal); transition: width 0.2s; }
-.meter-bar.is-over { background: var(--danger-border); }
-.meter-text { margin: 6px 0 0; }
-.msg { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; border-left: 6px solid; font-weight: 600; }
-.msg-ok { background: var(--ok-bg); border-color: var(--good); }
-.msg-warn { background: var(--warn-bg); border-color: var(--warn-border); }
-.msg-danger { background: var(--danger-bg); border-color: var(--danger-border); }
+.meter { height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; margin-top: 10px; }
+.meter-bar { height: 100%; width: 0; background: var(--teal); transition: width 0.2s; }
+.meter-bar.is-over { background: var(--coral); }
+.meter-text { margin-top: 6px; }
+.msg { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; border-left: 6px solid; font-weight: 600; }
+.msg-ok { background: var(--teal-tint); border-color: var(--teal); }
+.msg-warn { background: var(--mustard-tint); border-color: var(--mustard); }
+.msg-danger { background: var(--coral-tint); border-color: var(--coral-ink); }
 .msg strong { font-size: 1.1em; }
 
 /* ---------- 逆算 ---------- */
 .reverse-grid { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 8px; }
 .rev-field { display: flex; flex-direction: column; font-weight: 800; }
-.reverse-result { margin: 12px 0 0; font-size: 1.15rem; font-weight: 700; }
-.reverse-result b { font-size: 1.7rem; color: var(--primary); }
-.reverse-note { margin: 4px 0 0; color: var(--danger-border); font-weight: 700; min-height: 1em; }
+.reverse-result { margin-top: 12px; font-size: 1.1rem; font-weight: 700; }
+.reverse-result b { font-size: 1.7rem; white-space: nowrap; }
+.reverse-note { margin-top: 4px; color: var(--coral-ink); font-weight: 700; min-height: 1em; }
 .apply-btn {
   margin-top: 10px; width: 100%; min-height: 52px;
-  border: 0; border-radius: 12px;
-  background: var(--primary); color: var(--primary-ink);
+  border: 0; border-radius: 14px;
+  background: var(--ink); color: #fff;
   font-weight: 800; font-size: 1.05rem; cursor: pointer;
 }
 
 /* ---------- 注意事項 ---------- */
 .notes-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px 16px; }
-.notes { scroll-margin-top: 170px; }
+@media (min-width: 900px) { .notes-wrap { padding: 0 24px 24px; } }
+.notes { scroll-margin-top: 150px; }
 .notes ul { margin: 8px 0 0; padding-left: 1.2em; }
-.notes li { margin: 8px 0; font-size: 0.95rem; }
+.notes li { margin: 8px 0; font-size: 0.95rem; max-width: 46em; }
 
 /* ---------- 注意書き（常時表示） ---------- */
-.disclaimer .badge {
-  display: inline-block;
-  background: #ffd23f;
-  color: #000;
-  border-radius: 6px;
-  padding: 0 8px;
-  margin-right: 4px;
-}
-.disclaimer a { color: #9cc8ff; white-space: nowrap; margin-left: 4px; }
 .disclaimer {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 20;
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 0.8rem;
+  background: var(--mustard-tint);
+  border-top: 2px solid var(--mustard);
+  color: var(--ink);
+  font-size: 0.78rem;
   font-weight: 700;
-  line-height: 1.4;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  line-height: 1.45;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
   text-align: center;
+}
+.disclaimer .badge {
+  display: inline-block;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 8px;
+  margin-right: 4px;
+}
+.disclaimer a { color: var(--ink); white-space: nowrap; margin-left: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
 }
 
 </style>
@@ -334,13 +427,15 @@ input[type="range"]::-moz-range-thumb {
 <!-- 最終資産額（スマホでは画面上部に固定。スクロールすると小さくなる） -->
 <header class="hero" id="hero" aria-live="polite">
   <div class="hero-inner">
-    <div class="hero-label"><span id="heroYears">20</span>年後の資産額（NISA）</div>
-    <div class="hero-amount" id="heroAmount">—</div>
-    <div class="hero-cond" id="heroCond"></div>
-    <div class="hero-breakdown">
-      <span class="chip chip-principal">元本 <b id="heroPrincipal">—</b></span>
-      <span class="chip chip-gain">運用益 <b id="heroGain">—</b></span>
+    <p class="hero-label"><span id="heroYears">20</span>年後の資産額（NISA）</p>
+    <p class="hero-amount" id="heroAmount">—</p>
+    <!-- 元本と運用益の割合を1本の帯で見せる -->
+    <div class="band" aria-hidden="true"><span class="band-p" id="bandP"></span><span class="band-g" id="bandG"></span></div>
+    <div class="band-legend">
+      <span class="lg lg-p">元本 <b id="heroPrincipal">—</b></span>
+      <span class="lg lg-g">運用益 <b id="heroGain">—</b></span>
     </div>
+    <p class="hero-cond" id="heroCond"></p>
   </div>
 </header>
 
@@ -350,11 +445,17 @@ input[type="range"]::-moz-range-thumb {
     <h2 id="presetsTitle" class="panel-title">プラン例を選ぶ</h2>
     <div class="preset-groups">
     <div class="preset-group">
-    <p class="preset-label" id="presetSmall">少額から（4年＝大学の在学期間の目安）</p>
-    <div class="presets" role="group" aria-labelledby="presetSmall">
-      <button type="button" class="preset" data-monthly="1000" data-years="4">月1,000円<br>×4年</button>
-      <button type="button" class="preset" data-monthly="2000" data-years="4">月2,000円<br>×4年</button>
-      <button type="button" class="preset" data-monthly="3000" data-years="4">月3,000円<br>×4年</button>
+    <p class="preset-label" id="presetSmall">少額から（ラーメン1杯＝1,000円、4年＝大学の在学期間）</p>
+    <div class="presets presets-ramen" role="group" aria-labelledby="presetSmall">
+      <button type="button" class="preset preset-ramen tone-teal" data-monthly="1000" data-years="4">
+        <span class="pr-title">ラーメン1杯ガマン</span><span class="pr-amt">月1,000円</span><span class="pr-yrs">4年</span>
+      </button>
+      <button type="button" class="preset preset-ramen tone-mustard" data-monthly="2000" data-years="4">
+        <span class="pr-title">ラーメン2杯ガマン</span><span class="pr-amt">月2,000円</span><span class="pr-yrs">4年</span>
+      </button>
+      <button type="button" class="preset preset-ramen tone-coral" data-monthly="3000" data-years="4">
+        <span class="pr-title">ラーメン3杯ガマン</span><span class="pr-amt">月3,000円</span><span class="pr-yrs">4年</span>
+      </button>
     </div>
     </div>
     <div class="preset-group">
@@ -459,22 +560,28 @@ input[type="range"]::-moz-range-thumb {
 
     <div class="panel">
       <h3 class="panel-title">課税口座・預金との比較</h3>
-      <div class="compare">
-        <div class="cmp cmp-nisa">
-          <div class="cmp-label">NISA（非課税）</div>
-          <div class="cmp-value" id="cmpNisa">—</div>
+      <p class="hint">同じ金額を積み立てた場合の、最後の金額です。</p>
+      <div class="bars">
+        <div class="bar-row row-nisa">
+          <span class="bar-label">NISA<small>非課税</small></span>
+          <b class="bar-val" id="cmpNisa">—</b>
+          <span class="bar-track"><span class="bar-fill" id="barNisa"></span></span>
         </div>
-        <div class="cmp cmp-taxable">
-          <div class="cmp-label">課税口座<br><small>運用益に20.315%課税</small></div>
-          <div class="cmp-value" id="cmpTaxable">—</div>
+        <div class="bar-row row-taxable">
+          <span class="bar-label">課税口座<small>運用益に20.315%課税</small></span>
+          <b class="bar-val" id="cmpTaxable">—</b>
+          <span class="bar-track"><span class="bar-fill" id="barTaxable"></span></span>
         </div>
-        <div class="cmp cmp-deposit">
-          <div class="cmp-label">預金<br><small id="cmpDepositRate">年0.2%・税引前</small></div>
-          <div class="cmp-value" id="cmpDeposit">—</div>
+        <div class="bar-row row-deposit">
+          <span class="bar-label">預金<small id="cmpDepositRate">年0.2%・税引前</small></span>
+          <b class="bar-val" id="cmpDeposit">—</b>
+          <span class="bar-track"><span class="bar-fill" id="barDeposit"></span></span>
         </div>
       </div>
-      <p class="diff">NISAなら課税口座より <b id="diffTax">—</b> おトク</p>
-      <p class="diff diff-sub">預金との差：<b id="diffDeposit">—</b></p>
+      <dl class="diffs">
+        <div><dt>課税口座との差</dt><dd id="diffTax">—</dd></div>
+        <div><dt>預金との差</dt><dd id="diffDeposit">—</dd></div>
+      </dl>
     </div>
 
     <div class="panel">
@@ -692,7 +799,14 @@ input[type="range"]::-moz-range-thumb {
   var fmt = C.formatYen;
   var $ = function (id) { return document.getElementById(id); };
 
-  var COLORS = { principal: '#1f5fbf', gain: '#e07000', deposit: '#222222' };
+  // スライドと同じ配色（style.css の --teal / --coral / --muted と合わせる）
+  var COLORS = { principal: '#17A398', gain: '#EE5A52', deposit: '#5F5D70', ink: '#23233A', grid: '#EFE5D3' };
+  var RAMEN = 1000; // ラーメン1杯＝1,000円（スライドの前提）
+
+  /** 「981万円」の数字を大きく、単位を小さく表示するためのHTML（fmt の出力は数字と単位のみ） */
+  function amountHtml(yen) {
+    return fmt(yen).replace(/(億|万円|円)/g, '<span class="u">$1</span>');
+  }
 
   // ---------- 入力（スライダー＋数値入力の連動） ----------
   // 利回りは%、初期投資額は万円単位で保持し、計算時に換算する
@@ -811,7 +925,8 @@ input[type="range"]::-moz-range-thumb {
     }
     Chart.defaults.font.size = 15;
     Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-    Chart.defaults.color = '#0d1117';
+    Chart.defaults.color = COLORS.ink;
+    Chart.defaults.borderColor = COLORS.grid;
     chart = new Chart($('chart'), {
       type: 'bar',
       data: {
@@ -836,7 +951,7 @@ input[type="range"]::-moz-range-thumb {
         plugins: {
           legend: { position: 'top', labels: { usePointStyle: true, pointStyleWidth: 22, padding: 14, font: { size: 15, weight: 'bold' } } },
           tooltip: {
-            backgroundColor: 'rgba(0,0,0,0.9)',
+            backgroundColor: COLORS.ink,
             titleFont: { size: 16, weight: 'bold' },
             bodyFont: { size: 15 },
             footerFont: { size: 16, weight: 'bold' },
@@ -867,19 +982,37 @@ input[type="range"]::-moz-range-thumb {
 
     // 最終資産額
     $('heroYears').textContent = years;
-    $('heroAmount').textContent = fmt(last.value);
-    $('heroCond').textContent = '毎月' + fmt(monthly) + '・年' + values.rate.toFixed(1) + '%・' + years + '年' +
+    $('heroAmount').innerHTML = amountHtml(last.value);
+    var gain = Math.max(0, last.gain);
+    var cond = '毎月' + fmt(monthly) + '・年' + values.rate.toFixed(1) + '%・' + years + '年' +
       (initial > 0 ? '・初期' + fmt(initial) : '');
+    // 増えた分が実感しやすい規模のときだけ、ラーメンの杯数に置き換えて見せる
+    var bowls = Math.round(gain / RAMEN);
+    var condEl = $('heroCond');
+    condEl.textContent = cond + '　';
+    if (bowls >= 1 && bowls < 1000) {
+      var ramen = document.createElement('span');
+      ramen.className = 'ramen';
+      ramen.textContent = '増えた分はラーメン約' + bowls + '杯ぶん';
+      condEl.appendChild(ramen);
+    }
     $('heroPrincipal').textContent = fmt(last.principal);
     $('heroGain').textContent = fmt(last.gain);
+    var total = last.principal + gain;
+    $('bandP').style.width = (total > 0 ? last.principal / total * 100 : 100) + '%';
+    $('bandG').style.width = (total > 0 ? gain / total * 100 : 0) + '%';
 
-    // 比較
+    // 比較（3本の棒の長さは一番大きい金額を100%とする）
     var cmp = C.compareTaxable(last.value, last.principal);
+    var maxV = Math.max(cmp.nisa, cmp.taxable, depLast.value) || 1;
     $('cmpNisa').textContent = fmt(cmp.nisa);
     $('cmpTaxable').textContent = fmt(cmp.taxable);
     $('cmpDeposit').textContent = fmt(depLast.value);
+    $('barNisa').style.width = (cmp.nisa / maxV * 100) + '%';
+    $('barTaxable').style.width = (cmp.taxable / maxV * 100) + '%';
+    $('barDeposit').style.width = (depLast.value / maxV * 100) + '%';
     $('cmpDepositRate').textContent = '年' + depositRate() + '%・税引前';
-    $('diffTax').textContent = fmt(cmp.tax);
+    $('diffTax').textContent = '+' + fmt(cmp.tax);
     var dd = last.value - depLast.value;
     $('diffDeposit').textContent = (dd >= 0 ? '+' : '') + fmt(dd);
 
