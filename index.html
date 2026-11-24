@@ -1052,9 +1052,8 @@ input[type="range"]::-moz-range-thumb {
         '<br><small>上限到達後はNISA枠で新たに投資できません（このグラフでは上限後もそのまま積み立てた場合を表示しています）。</small>']);
     } else if (l.reachesLifetime) {
       msgs.push(['warn', '<strong>' + l.reachYear + '年目で生涯の非課税枠 1,800万円 をちょうど使い切ります。</strong>']);
-    } else {
-      msgs.push(['ok', '生涯の非課税枠の範囲内です（残り ' + fmt(LIMIT - l.totalPrincipal) + '）。']);
     }
+    // 枠の範囲内のときは、上のメーターと「1,800万円のうち◯◯」の表示で足りるので、メッセージは出さない
     if (l.overTsumitate) {
       msgs.push(['danger', '<strong>⚠ つみたて投資枠（年120万円・月10万円）を超えています。</strong>']);
     } else if (l.firstYearOverTotal) {
